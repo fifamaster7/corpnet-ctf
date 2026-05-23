@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CorpNet SOC — Malware Triage</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;500;600;700&family=Barlow:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg:       #080b0f;
+    --surface:  #0e1318;
+    --surface2: #141b22;
+    --border:   #1a2535;
+    --border2:  #243040;
+    --red:      #ff3c5a;
+    --red-dim:  rgba(255,60,90,0.08);
+    --red-mid:  rgba(255,60,90,0.18);
+    --orange:   #ff7b2c;
+    --yellow:   #ffd166;
+    --green:    #06d6a0;
+    --blue:     #4db8ff;
+    --text:     #7a8fa8;
+    --bright:   #d0dde8;
+    --dim:      #3a4f63;
+    --mono:     'Inconsolata', monospace;
+    --sans:     'Barlow', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: var(--sans);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* ── Alert banner ── */
+  .alert-banner {
+    background: var(--red-dim);
+    border-bottom: 1px solid rgba(255,60,90,0.3);
+    padding: 10px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: pulse-bg 2s infinite;
+  }
+
+  @keyframes pulse-bg {
+    0%, 100% { background: var(--red-dim); }
+    50%       { background: rgba(255,60,90,0.13); }
+  }
+
+  .alert-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .alert-text {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--red);
+    letter-spacing: 0.08em;
+  }
+
+  .alert-time {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: rgba(255,60,90,0.5);
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .header-logo {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--bright);
+    letter-spacing: 0.1em;
+  }
+
+  .header-sep { width: 1px; height: 18px; background: var(--border2); }
+
+  .header-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .header-right { margin-left: auto; display: flex; gap: 10px; }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .tag-red  { background: rgba(255,60,90,0.12);  color: var(--red);    border: 1px solid rgba(255,60,90,0.25); }
+  .tag-blue { background: rgba(77,184,255,0.10); color: var(--blue);   border: 1px solid rgba(77,184,255,0.2); }
+
+  /* ── Main layout ── */
+  .main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 28px 24px 0;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Incident card ── */
+  .incident-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 18px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-id {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 0.06em;
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--bright);
+    letter-spacing: 0.02em;
+  }
+
+  .card-body { padding: 18px; }
+
+  /* ── File info table ── */
+  .file-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 18px;
+  }
+
+  .file-table tr { border-bottom: 1px solid var(--border); }
+  .file-table tr:last-child { border-bottom: none; }
+
+  .file-table td {
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    vertical-align: top;
+  }
+
+  .file-table td:first-child {
+    color: var(--dim);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    width: 160px;
+    padding-top: 10px;
+  }
+
+  .file-table td:last-child { color: var(--bright); word-break: break-all; }
+
+  .hash-val {
+    font-size: 13px;
+    color: var(--yellow) !important;
+    letter-spacing: 0.04em;
+    padding: 6px 10px;
+    background: rgba(255,209,102,0.06);
+    border: 1px solid rgba(255,209,102,0.15);
+    display: inline-block;
+    margin-top: 2px;
+  }
+
+  /* Severity bar */
+  .sev-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sev-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    position: relative;
+    max-width: 200px;
+  }
+
+  .sev-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 72%;
+    background: linear-gradient(90deg, var(--orange), var(--red));
+  }
+
+  .sev-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 0.08em;
+  }
+
+  /* AV detections mini chart */
+  .av-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .av-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    max-width: 200px;
+    position: relative;
+  }
+
+  .av-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 80%;
+    background: var(--red);
+  }
+
+  /* ── Briefing ── */
+  .briefing {
+    background: var(--red-dim);
+    border: 1px solid rgba(255,60,90,0.2);
+    border-left: 3px solid var(--red);
+    padding: 14px 16px;
+    margin-bottom: 18px;
+  }
+
+  .briefing-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+
+  .briefing-text {
+    font-size: 14px;
+    color: var(--bright);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .briefing-text strong { color: var(--yellow); font-weight: 500; }
+
+  /* ── Task box ── */
+  .task-box {
+    background: rgba(77,184,255,0.05);
+    border: 1px solid rgba(77,184,255,0.18);
+    padding: 14px 16px;
+    margin-bottom: 18px;
+  }
+
+  .task-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 8px;
+  }
+
+  .task-text {
+    font-size: 14px;
+    color: var(--bright);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .task-text code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--yellow);
+    background: rgba(255,209,102,0.08);
+    padding: 1px 5px;
+  }
+
+  /* ── Flag submission ── */
+  .submit-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 14px;
+    animation: fadeUp 0.4s ease 0.1s both;
+  }
+
+  .submit-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 12px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+  }
+
+  .input-prefix {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-right: none;
+    padding: 0 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+  }
+
+  .flag-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-right: none;
+    color: var(--bright);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    letter-spacing: 0.04em;
+  }
+
+  .flag-input:focus { border-color: var(--blue); }
+  .flag-input::placeholder { color: var(--dim); }
+
+  .submit-btn {
+    background: var(--blue);
+    border: 1px solid var(--blue);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0 20px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .submit-btn:hover { opacity: 0.82; }
+
+  .result {
+    font-family: var(--mono);
+    font-size: 12px;
+    min-height: 18px;
+    line-height: 1.7;
+  }
+
+  .r-ok   { color: var(--green); }
+  .r-err  { color: var(--red); }
+  .r-info { color: var(--dim); }
+
+  /* ── Hints ── */
+  .hints-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeUp 0.4s ease 0.15s both;
+  }
+
+  .hint-panel {
+    display: none;
+    background: var(--surface);
+    border: 1px solid rgba(6,214,160,0.18);
+    padding: 13px 16px;
+  }
+
+  .hint-panel.h2 { border-color: rgba(255,209,102,0.2); }
+  .hint-panel.visible { display: block; }
+
+  .hint-head {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 7px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hint-panel.h2 .hint-head { color: var(--yellow); }
+
+  .hint-num {
+    font-size: 9px;
+    padding: 1px 6px;
+    background: rgba(6,214,160,0.1);
+    color: var(--green);
+    border-radius: 2px;
+  }
+
+  .hint-panel.h2 .hint-num {
+    background: rgba(255,209,102,0.1);
+    color: var(--yellow);
+  }
+
+  .hint-body {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.8;
+  }
+
+  .hint-body code {
+    color: var(--green);
+    background: rgba(6,214,160,0.08);
+    padding: 1px 5px;
+  }
+
+  .hint-panel.h2 .hint-body code {
+    color: var(--yellow);
+    background: rgba(255,209,102,0.08);
+  }
+</style>
+</head>
+<body>
+
+<div class="alert-banner">
+  <span class="alert-icon">⚠</span>
+  <span class="alert-text">SECURITY ALERT — Malicious file detected on endpoint CN-WS-047 · EDR quarantine active · SOC triage required</span>
+  <span class="alert-time" id="clock">--:--:-- UTC</span>
+</div>
+
+<div class="header">
+  <span class="header-logo">CorpNet SOC</span>
+  <div class="header-sep"></div>
+  <span class="header-sub">Incident Triage Console</span>
+  <div class="header-right">
+    <span class="tag tag-red">CRITICAL</span>
+    <span class="tag tag-blue">CTF Challenge #4</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="section-label" style="margin-top:4px">Incident Report</div>
+
+  <div class="incident-card">
+    <div class="card-header">
+      <span class="card-id">INC-2024-1047</span>
+      <span class="tag tag-red" style="font-size:9px">MALWARE</span>
+      <span class="card-title">Suspicious Executable — Active C2 Communication Suspected</span>
+    </div>
+    <div class="card-body">
+
+      <table class="file-table">
+        <tr>
+          <td>Hostname</td>
+          <td>CN-WS-047</td>
+        </tr>
+        <tr>
+          <td>Filename</td>
+          <td>Invoice_Q4_2024.exe</td>
+        </tr>
+        <tr>
+          <td>File Type</td>
+          <td>PE32 Executable (.NET)</td>
+        </tr>
+        <tr>
+          <td>First Seen</td>
+          <td>2024-02-06 08:14:32 UTC</td>
+        </tr>
+        <tr>
+          <td>SHA256</td>
+          <td>
+            <span class="hash-val">a8f32c3a8462991be7a3fc0940d2c99f01566264cd71b33644da7c18966dc6f4</span>
+          </td>
+        </tr>
+        <tr>
+          <td>AV Detections</td>
+          <td>
+            <div class="av-row">
+              <div class="av-bar"><div class="av-fill"></div></div>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--red)">53 / 66 vendors</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>Severity</td>
+          <td>
+            <div class="sev-row">
+              <div class="sev-bar"><div class="sev-fill"></div></div>
+              <span class="sev-label">HIGH — Active RAT</span>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <div class="briefing">
+        <div class="briefing-title">SOC Analyst Briefing</div>
+        <div class="briefing-text">
+          EDR flagged this executable on workstation <strong>CN-WS-047</strong> at 08:14 UTC.
+          The file was delivered via a phishing email with the subject line
+          <strong>"Q4 Invoice — Action Required"</strong>. Static analysis confirms it is a
+          <strong>.NET-based Remote Access Trojan</strong> capable of keylogging, credential theft,
+          and persistent outbound C2 communication.<br><br>
+          The malware is actively beaconing to an external IP address. Your task is to
+          <strong>identify the C2 server IP</strong> so the network team can block it immediately.
+        </div>
+      </div>
+
+      <div class="task-box">
+        <div class="task-title">🎯 Mission</div>
+        <div class="task-text">
+          Use the SHA256 hash above to look up this sample in open-source threat intelligence.
+          Find the <strong>C2 IP address</strong> the malware is communicating with
+          and submit it as the flag.<br><br>
+          Flag format: <code>CTF{x.x.x.x}</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Hints -->
+  <div class="hints-wrap">
+    <div class="hint-panel" id="h1">
+      <div class="hint-head">
+        <span>Hint</span>
+        <span class="hint-num">1 / 2</span>
+      </div>
+      <div class="hint-body">
+        Gib den SHA256 Hash auf <code>https://www.virustotal.com</code> ein.<br><br>
+        Öffne den Tab <code>Behavior</code> und schau unter<br>
+        <code>Network Communication</code> → <code>IP Traffic</code>.<br><br>
+        Suche nach einer IP die sich auf einem <strong>nicht-standardmässigen Port</strong>
+        verbindet — also nicht 80, 443 oder 53.<br>
+        Genau diese IP ist der C2-Server.
+      </div>
+    </div>
+
+    <div class="hint-panel h2" id="h2">
+      <div class="hint-head">
+        <span>Hint</span>
+        <span class="hint-num">2 / 2</span>
+      </div>
+      <div class="hint-body">
+        Auf VirusTotal gibt es einen <code>Community</code> Tab.<br><br>
+        Threat Researcher dokumentieren ihre Findings direkt beim Sample.<br><br>
+        Suche nach einem Kommentar von User <code>JaffaCakes118</code> —<br>
+        er listet die C2 IP und den Port direkt im Kommentar auf.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Hints
+  const p = new URLSearchParams(window.location.search);
+  const hl = p.get('hint');
+  if (hl === '1') document.getElementById('h1').classList.add('visible');
+  if (hl === '2') {
+    document.getElementById('h1').classList.add('visible');
+    document.getElementById('h2').classList.add('visible');
+  }
+
+  // Clock
+  function tick() {
+    document.getElementById('clock').textContent =
+      new Date().toUTCString().slice(17, 25) + ' UTC';
+  }
+  setInterval(tick, 1000); tick();
+</script>
+
+</body>
+</html>
