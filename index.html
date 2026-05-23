@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CorpNet CTF 2024</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg:       #060809;
+    --surface:  #0c1014;
+    --surface2: #121820;
+    --border:   #1a2535;
+    --border2:  #243040;
+    --accent:   #00c8ff;
+    --acc-dim:  rgba(0,200,255,0.07);
+    --acc-mid:  rgba(0,200,255,0.15);
+    --green:    #00e676;
+    --orange:   #ff9100;
+    --red:      #ff3d57;
+    --text:     #6a8099;
+    --bright:   #c8dce8;
+    --dim:      #2a3a4a;
+    --mono:     'Space Mono', monospace;
+    --sans:     'Space Grotesk', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: var(--sans);
+    color: var(--text);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Top glow */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 900px; height: 500px;
+    background: radial-gradient(ellipse, rgba(0,200,255,0.06) 0%, transparent 65%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 72px 24px 56px;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .hero-eyebrow::before, .hero-eyebrow::after {
+    content: '';
+    width: 40px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent));
+  }
+
+  .hero-eyebrow::after {
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .hero-title {
+    font-family: var(--sans);
+    font-size: clamp(42px, 8vw, 80px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--bright);
+    margin-bottom: 8px;
+  }
+
+  .hero-title span {
+    color: var(--accent);
+    position: relative;
+  }
+
+  .hero-subtitle {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    letter-spacing: 0.08em;
+    margin-bottom: 32px;
+  }
+
+  /* Stats row */
+  .stats {
+    display: inline-flex;
+    gap: 0;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    overflow: hidden;
+    margin-bottom: 0;
+  }
+
+  .stat {
+    padding: 12px 28px;
+    border-right: 1px solid var(--border2);
+    text-align: center;
+  }
+
+  .stat:last-child { border-right: none; }
+
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  /* ── Challenges grid ── */
+  .challenges {
+    position: relative;
+    z-index: 1;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── Challenge card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    transition: border-color 0.2s, transform 0.2s;
+    animation: fadeUp 0.5s ease both;
+    overflow: hidden;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  .card.c1::before { background: linear-gradient(90deg, var(--accent), transparent); }
+  .card.c2::before { background: linear-gradient(90deg, #f5a623, transparent); }
+  .card.c3::before { background: linear-gradient(90deg, var(--orange), transparent); }
+  .card.c4::before { background: linear-gradient(90deg, var(--red), transparent); }
+  .card.c5::before { background: linear-gradient(90deg, var(--orange), transparent); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card:nth-child(1) { animation-delay: 0.05s; }
+  .card:nth-child(2) { animation-delay: 0.10s; }
+  .card:nth-child(3) { animation-delay: 0.15s; }
+  .card:nth-child(4) { animation-delay: 0.20s; }
+  .card:nth-child(5) { animation-delay: 0.25s; }
+
+  .card-num {
+    position: absolute;
+    top: 16px; right: 16px;
+    font-family: var(--mono);
+    font-size: 48px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.03);
+    line-height: 1;
+    user-select: none;
+  }
+
+  .card-top {
+    padding: 20px 20px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  /* Icon */
+  .card-icon {
+    width: 40px; height: 40px;
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    background: var(--surface2);
+  }
+
+  .card-meta { flex: 1; }
+
+  .card-category {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 4px;
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--bright);
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  .card-body {
+    padding: 14px 20px 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .card-desc {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.65;
+    font-weight: 300;
+  }
+
+  /* Tags row */
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 7px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+
+  .tag-blue   { color: var(--accent);  border-color: rgba(0,200,255,0.2);  background: var(--acc-dim); }
+  .tag-amber  { color: #f5a623;        border-color: rgba(245,166,35,0.2); background: rgba(245,166,35,0.07); }
+  .tag-orange { color: var(--orange);  border-color: rgba(255,145,0,0.2);  background: rgba(255,145,0,0.07); }
+  .tag-red    { color: var(--red);     border-color: rgba(255,61,87,0.2);  background: rgba(255,61,87,0.07); }
+  .tag-green  { color: var(--green);   border-color: rgba(0,230,118,0.2);  background: rgba(0,230,118,0.07); }
+
+  /* Footer row of card */
+  .card-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+  }
+
+  .points {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .card.c1 .points { color: var(--accent); }
+  .card.c2 .points { color: #f5a623; }
+  .card.c3 .points { color: var(--orange); }
+  .card.c4 .points { color: var(--red); }
+  .card.c5 .points { color: var(--orange); }
+
+  .points-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-left: 4px;
+  }
+
+  .card-arrow {
+    font-size: 18px;
+    color: var(--dim);
+    transition: color 0.15s, transform 0.15s;
+  }
+
+  .card:hover .card-arrow {
+    color: var(--accent);
+    transform: translateX(4px);
+  }
+
+  /* ── Footer ── */
+  .footer {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 0 24px 48px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 0.08em;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-eyebrow">CorpNet Security · 2024</div>
+  <div class="hero-title">CORP<span>CTF</span></div>
+  <div class="hero-subtitle">Security Awareness Challenge — Finde die Flags, lerne die Lektionen</div>
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-val">5</span>
+      <span class="stat-label">Challenges</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val">900</span>
+      <span class="stat-label">Total Punkte</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val">∞</span>
+      <span class="stat-label">Versuche</span>
+    </div>
+  </div>
+</div>
+
+<div class="challenges">
+
+  <!-- Challenge 1 -->
+  <a class="card c1" href="ctf-basicauth-challenge.html">
+    <div class="card-num">01</div>
+    <div class="card-top">
+      <div class="card-icon">🔐</div>
+      <div class="card-meta">
+        <div class="card-category">Web Security</div>
+        <div class="card-title">Was steckt im Login-Request?</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-desc">
+        Ein internes Portal verwendet Basic Authentication. Deine Aufgabe: finde heraus, was der Browser wirklich sendet — und warum das ein Problem ist.
+      </div>
+      <div class="card-tags">
+        <span class="tag tag-blue">Basic Auth</span>
+        <span class="tag tag-blue">Base64</span>
+        <span class="tag tag-blue">DevTools</span>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div>
+        <span class="points">100</span>
+        <span class="points-label">pts</span>
+      </div>
+      <span class="card-arrow">→</span>
+    </div>
+  </a>
+
+  <!-- Challenge 2 -->
+  <a class="card c2" href="ctf-caesar-challenge.html">
+    <div class="card-num">02</div>
+    <div class="card-top">
+      <div class="card-icon">📜</div>
+      <div class="card-meta">
+        <div class="card-category">Cryptography</div>
+        <div class="card-title">Caesars geheimes Dokument</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-desc">
+        Ein abgefangenes Memo enthält einen verschlüsselten Access Token. Die Geschichte dahinter verrät alles — wenn man genau liest.
+      </div>
+      <div class="card-tags">
+        <span class="tag tag-amber">Caesar Cipher</span>
+        <span class="tag tag-amber">ROT-N</span>
+        <span class="tag tag-amber">OSINT</span>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div>
+        <span class="points">100</span>
+        <span class="points-label">pts</span>
+      </div>
+      <span class="card-arrow">→</span>
+    </div>
+  </a>
+
+  <!-- Challenge 3 -->
+  <a class="card c3" href="ctf-cvss-challenge.html">
+    <div class="card-num">03</div>
+    <div class="card-top">
+      <div class="card-icon">📊</div>
+      <div class="card-meta">
+        <div class="card-category">Vulnerability Management</div>
+        <div class="card-title">Wie schlimm ist diese Lücke?</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-desc">
+        Eine Schwachstelle wurde im internen Helpdesk gefunden. Berechne den offiziellen CVSS v3.1 Base Score anhand der gegebenen Metriken.
+      </div>
+      <div class="card-tags">
+        <span class="tag tag-orange">CVSS v3.1</span>
+        <span class="tag tag-orange">XSS</span>
+        <span class="tag tag-orange">NVD</span>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div>
+        <span class="points">200</span>
+        <span class="points-label">pts</span>
+      </div>
+      <span class="card-arrow">→</span>
+    </div>
+  </a>
+
+  <!-- Challenge 4 -->
+  <a class="card c4" href="ctf-osint-challenge.html">
+    <div class="card-num">04</div>
+    <div class="card-top">
+      <div class="card-icon">🦠</div>
+      <div class="card-meta">
+        <div class="card-category">Threat Intelligence</div>
+        <div class="card-title">Finde den C2-Server</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-desc">
+        Ein Endpoint wurde kompromittiert. Der SHA256-Hash der Malware ist bekannt — deine Aufgabe: identifiziere die C2-IP über Open Source Intelligence.
+      </div>
+      <div class="card-tags">
+        <span class="tag tag-red">OSINT</span>
+        <span class="tag tag-red">VirusTotal</span>
+        <span class="tag tag-red">Malware</span>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div>
+        <span class="points">300</span>
+        <span class="points-label">pts</span>
+      </div>
+      <span class="card-arrow">→</span>
+    </div>
+  </a>
+
+  <!-- Challenge 5 -->
+  <a class="card c5" href="ctf-service-privesc-challenge.html">
+    <div class="card-num">05</div>
+    <div class="card-top">
+      <div class="card-icon">⚙️</div>
+      <div class="card-meta">
+        <div class="card-category">Windows Security</div>
+        <div class="card-title">Der vergessene Service</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-desc">
+        Ein Engineer hat einen Windows Service unsicher konfiguriert. Erkenne was ein Angreifer mit einem normalen Benutzeraccount damit anstellen kann.
+      </div>
+      <div class="card-tags">
+        <span class="tag tag-orange">Privilege Escalation</span>
+        <span class="tag tag-orange">Windows</span>
+        <span class="tag tag-orange">ACL</span>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div>
+        <span class="points">200</span>
+        <span class="points-label">pts</span>
+      </div>
+      <span class="card-arrow">→</span>
+    </div>
+  </a>
+
+</div>
+
+<div class="footer">
+  CORPNET SYSTEMS AG · SECURITY AWARENESS CTF 2024 · INTERNAL USE ONLY<br>
+  Alle Challenges sind fiktiv und dienen ausschliesslich zu Lernzwecken.
+</div>
+
+</body>
+</html>
