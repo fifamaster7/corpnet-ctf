@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CorpNet — Intercepted Document</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Share+Tech+Mono&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
+
+  :root {
+    --paper: #f2ead8;
+    --paper-dark: #e8ddc4;
+    --paper-shadow: #c9b99a;
+    --ink: #1a1208;
+    --ink-dim: #5a4a32;
+    --ink-faint: #9a8a72;
+    --red: #8b1a1a;
+    --stamp-red: rgba(139,26,26,0.85);
+    --mono: 'Share Tech Mono', monospace;
+    --type: 'Special Elite', cursive;
+    --serif: 'Crimson Pro', serif;
+    --terminal-bg: #0c0c0c;
+    --terminal-green: #39ff6a;
+    --terminal-dim: #1a6630;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1510;
+    background-image:
+      radial-gradient(ellipse at 30% 20%, rgba(80,60,30,0.3) 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 80%, rgba(60,40,20,0.3) 0%, transparent 60%);
+    font-family: var(--serif);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 60px;
+    position: relative;
+  }
+
+  /* Scanline overlay on body */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Top "intercepted" banner ── */
+  .intercept-banner {
+    width: 100%;
+    max-width: 760px;
+    background: #0c0c0c;
+    border: 1px solid #39ff6a33;
+    padding: 10px 18px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+    animation: fadeDown 0.5s ease;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .intercept-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--terminal-green);
+    box-shadow: 0 0 8px var(--terminal-green);
+    animation: blink 1.4s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .intercept-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--terminal-green);
+    letter-spacing: 0.1em;
+  }
+
+  .intercept-text span {
+    color: #39ff6a99;
+  }
+
+  .intercept-right {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #39ff6a55;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Paper document ── */
+  .document {
+    width: 100%;
+    max-width: 760px;
+    background: var(--paper);
+    box-shadow:
+      0 2px 4px rgba(0,0,0,0.3),
+      0 8px 32px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(0,0,0,0.2),
+      inset 0 0 60px rgba(180,150,100,0.15);
+    position: relative;
+    z-index: 1;
+    animation: riseUp 0.6s ease 0.1s both;
+  }
+
+  @keyframes riseUp {
+    from { opacity: 0; transform: translateY(24px) rotate(-0.3deg); }
+    to { opacity: 1; transform: translateY(0) rotate(0deg); }
+  }
+
+  /* Paper texture via pseudo */
+  .document::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: 0.6;
+    border-radius: inherit;
+  }
+
+  /* Left margin red line */
+  .document::after {
+    content: '';
+    position: absolute;
+    left: 72px;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: rgba(180,60,60,0.3);
+  }
+
+  /* ── CLASSIFIED stamp ── */
+  .stamp {
+    position: absolute;
+    top: 32px;
+    right: 40px;
+    border: 3px solid var(--stamp-red);
+    color: var(--stamp-red);
+    font-family: var(--type);
+    font-size: 22px;
+    letter-spacing: 0.15em;
+    padding: 4px 12px;
+    transform: rotate(6deg);
+    opacity: 0.75;
+    pointer-events: none;
+    text-transform: uppercase;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .stamp::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px solid var(--stamp-red);
+    opacity: 0.4;
+  }
+
+  /* ── Document content ── */
+  .doc-inner {
+    padding: 48px 56px 48px 88px;
+    position: relative;
+  }
+
+  /* Header */
+  .doc-header {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 16px;
+    margin-bottom: 28px;
+  }
+
+  .doc-org {
+    font-family: var(--type);
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 4px;
+  }
+
+  .doc-title {
+    font-family: var(--type);
+    font-size: 26px;
+    color: var(--ink);
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+
+  .doc-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-top: 12px;
+  }
+
+  .doc-meta-item strong {
+    display: block;
+    color: var(--ink-faint);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* Body text */
+  .doc-section {
+    margin-bottom: 24px;
+  }
+
+  .doc-section-title {
+    font-family: var(--type);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    border-bottom: 1px solid var(--paper-shadow);
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+  }
+
+  .doc-body {
+    font-size: 15px;
+    color: var(--ink);
+    line-height: 1.75;
+    font-weight: 300;
+  }
+
+  .doc-body em {
+    font-style: italic;
+    color: var(--ink-dim);
+  }
+
+  /* Redacted blocks */
+  .redacted {
+    background: var(--ink);
+    color: var(--ink);
+    padding: 0 4px;
+    border-radius: 1px;
+    user-select: none;
+    font-size: 13px;
+  }
+
+  /* The cipher block — highlighted box */
+  .cipher-block {
+    margin: 20px 0;
+    background: var(--paper-dark);
+    border-left: 3px solid var(--ink-dim);
+    padding: 14px 16px;
+    position: relative;
+  }
+
+  .cipher-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+
+  .cipher-text {
+    font-family: var(--mono);
+    font-size: 16px;
+    color: var(--ink);
+    letter-spacing: 0.12em;
+    word-break: break-all;
+    line-height: 1.6;
+  }
+
+  /* Handwritten annotation */
+  .annotation {
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    transform: translateY(-50%) rotate(2deg);
+    font-family: 'Segoe Script', 'Brush Script MT', cursive;
+    font-size: 12px;
+    color: var(--red);
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+
+  /* Footnote */
+  .doc-footnote {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--paper-shadow);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    letter-spacing: 0.05em;
+    line-height: 1.8;
+  }
+
+  /* ── Flag submission terminal ── */
+  .terminal {
+    width: 100%;
+    max-width: 760px;
+    background: var(--terminal-bg);
+    border: 1px solid #39ff6a22;
+    margin-top: 20px;
+    padding: 20px 24px;
+    position: relative;
+    z-index: 1;
+    animation: riseUp 0.6s ease 0.25s both;
+  }
+
+  .terminal-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #39ff6a15;
+  }
+
+  .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .t-dot.r { background: #ff5f57; }
+  .t-dot.y { background: #febc2e; }
+  .t-dot.g { background: #28c840; }
+
+  .terminal-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #39ff6a55;
+    letter-spacing: 0.08em;
+    margin-left: 8px;
+  }
+
+  .terminal-prompt {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--terminal-dim);
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  .terminal-prompt span { color: var(--terminal-green); }
+
+  .terminal-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .terminal-caret {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--terminal-green);
+  }
+
+  .terminal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #39ff6a33;
+    color: var(--terminal-green);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 4px 0;
+    outline: none;
+    letter-spacing: 0.08em;
+    caret-color: var(--terminal-green);
+  }
+
+  .terminal-input::placeholder { color: #39ff6a33; }
+
+  .terminal-btn {
+    background: transparent;
+    border: 1px solid #39ff6a44;
+    color: var(--terminal-green);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    text-transform: uppercase;
+  }
+
+  .terminal-btn:hover {
+    background: rgba(57,255,106,0.08);
+    border-color: #39ff6a88;
+  }
+
+  .terminal-output {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    min-height: 20px;
+  }
+
+  .t-success { color: var(--terminal-green); }
+  .t-error   { color: #ff4d6a; }
+  .t-info    { color: #39ff6a66; }
+
+  /* ── Hint panels ── */
+  .hints-area {
+    width: 100%;
+    max-width: 760px;
+    margin-top: 16px;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .hint-panel {
+    display: none;
+    background: #0c0c0c;
+    border: 1px solid rgba(0,212,170,0.15);
+    padding: 14px 18px;
+    animation: fadeDown 0.3s ease;
+  }
+
+  .hint-panel.hint-2 {
+    border-color: rgba(255,200,50,0.2);
+  }
+
+  .hint-panel.visible { display: block; }
+
+  .hint-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #00d4aa;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hint-panel.hint-2 .hint-title { color: #ffc832; }
+
+  .hint-badge {
+    font-size: 9px;
+    padding: 1px 6px;
+    background: rgba(0,212,170,0.1);
+    color: #00d4aa;
+    border-radius: 2px;
+  }
+
+  .hint-panel.hint-2 .hint-badge {
+    background: rgba(255,200,50,0.1);
+    color: #ffc832;
+  }
+
+  .hint-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #5a6370;
+    line-height: 1.75;
+  }
+
+  .hint-text code {
+    color: #00d4aa;
+    background: rgba(0,212,170,0.08);
+    padding: 1px 5px;
+  }
+
+  .hint-panel.hint-2 .hint-text code {
+    color: #ffc832;
+    background: rgba(255,200,50,0.08);
+  }
+</style>
+</head>
+<body>
+
+<!-- Intercept banner -->
+<div class="intercept-banner">
+  <div class="intercept-dot"></div>
+  <div class="intercept-text">
+    INTERCEPTED TRANSMISSION &nbsp;·&nbsp;
+    <span>SOURCE: CORPNET INTERNAL MAIL SERVER</span> &nbsp;·&nbsp;
+    <span>CAPTURE DATE: 2024-11-14 03:17:42 UTC</span>
+  </div>
+  <div class="intercept-right">REF#: INT-2024-0447</div>
+</div>
+
+<!-- The document -->
+<div class="document">
+  <div class="stamp">Classified</div>
+
+  <div class="doc-inner">
+    <div class="doc-header">
+      <div class="doc-org">CorpNet Systems AG &nbsp;·&nbsp; Security Awareness Archive</div>
+      <div class="doc-title">Historical Cipher Methods —<br>The Caesar Legacy &amp; Its Modern Relevance</div>
+      <div class="doc-meta">
+        <div class="doc-meta-item">
+          <strong>Author</strong>
+          Dr. M. Valerius, Hist. Dept.
+        </div>
+        <div class="doc-meta-item">
+          <strong>Series</strong>
+          Crypto Origins Vol. III
+        </div>
+        <div class="doc-meta-item">
+          <strong>Date</strong>
+          November 14, 2024
+        </div>
+        <div class="doc-meta-item">
+          <strong>Classification</strong>
+          INTERNAL — RESTRICTED
+        </div>
+        <div class="doc-meta-item">
+          <strong>Purpose</strong>
+          Security Awareness
+        </div>
+        <div class="doc-meta-item">
+          <strong>Doc. ID</strong>
+          CN-HIST-2024-0314
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <div class="doc-section-title">I. Gaius Julius Caesar — A Man of Numbers</div>
+      <div class="doc-body">
+        Gaius Julius Caesar was, by all historical accounts, a man of remarkable discipline
+        and obsessive habit. His <em>Commentarii de Bello Gallico</em> reveals not only a
+        brilliant military strategist but also a mind deeply attached to symbolic numerology.
+        Roman historians — most notably Suetonius — note that Caesar held a particular
+        fondness for the number <strong>seven</strong>.<br><br>
+        This attachment was not merely superstitious. Caesar organised his legions in groups
+        of <strong>seven</strong> cohorts for key engagements. He scheduled his most critical
+        campaigns to begin on the <strong>7th</strong> day of the month. Even the famous
+        <em>Veni, vidi, vici</em> — three words, but <strong>7</strong> syllables. Coincidence?
+        His biographers thought not.
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <div class="doc-section-title">II. The Cipher</div>
+      <div class="doc-body">
+        It was during the Gallic campaigns that Caesar first employed what we now call the
+        <em>Caesar Cipher</em> — a simple substitution method in which each letter of the
+        alphabet is shifted by a fixed number of positions. Messages dispatched to generals
+        in the field were encoded; only those who knew the shift value could read them.<br><br>
+        According to Suetonius, Caesar typically used a shift of <strong>three</strong> for
+        routine correspondence. But for his most sensitive dispatches — those containing
+        troop movements, asset locations, and personal orders — he reserved a different value.
+        One that held personal meaning. His biographer writes:
+      </div>
+
+      <div class="cipher-block" style="font-style:italic;">
+        <div class="cipher-label">Suetonius · De Vita Caesarum · c. 121 AD</div>
+        <div class="doc-body" style="font-size:14px; line-height:1.8;">
+          <em>"...and for those letters which he wished no common soldier to decipher,
+          he would advance each character not by three, but by as many places as his
+          most favoured number — that number which he held sacred above all others,
+          which he said the gods themselves had whispered to him on the eve of the
+          Rubicon crossing. Seven, always seven."</em>
+        </div>
+      </div>
+
+      <div class="doc-body">
+        Modern cryptographers classify this as a monoalphabetic substitution cipher —
+        trivially broken today, yet sufficient for a world without computers.
+        The irony, of course, is that Caesar considered it unbreakable.
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <div class="doc-section-title">III. Intercepted Dispatch — Encoded with the Sacred Shift</div>
+      <div class="doc-body">
+        Among the artefacts recovered from the CorpNet Security Archive (acquisition ref.
+        <span class="redacted">███████████</span>), researchers found the following fragment.
+        It is believed to be encoded using the shift value Caesar reserved for his most
+        sensitive communications — as described above. The decoded content has never been
+        officially published.
+      </div>
+
+      <div class="cipher-block">
+        <div class="cipher-label">Encoded Dispatch · Archive Ref. CN-HIST-0314 · Shift Unknown</div>
+        <div class="cipher-text">JAM{jhlzhy_svclk_aol_7btilyZ}</div>
+        <div class="annotation">what does it say?</div>
+      </div>
+
+      <div class="doc-body">
+        If you can decode this fragment, submit it below. The shift used is, as always
+        with Caesar — a matter of personal conviction.
+      </div>
+    </div>
+
+    <div class="doc-footnote">
+      CORPNET SYSTEMS AG · SECURITY AWARENESS ARCHIVE · INTERNAL USE ONLY<br>
+      Source material: Suetonius, <em>De Vita Caesarum</em> (adapted) · CN-HIST-2024-0314
+    </div>
+  </div>
+</div>
+
+<!-- Terminal / flag submission -->
+<div class="terminal">
+  <div class="terminal-bar">
+    <div class="t-dot r"></div>
+    <div class="t-dot y"></div>
+    <div class="t-dot g"></div>
+    <span class="terminal-title">corpnet-ctf :: flag submission terminal</span>
+  </div>
+  <div class="terminal-prompt">
+    Decoded the token? Submit your flag below.<br>
+    <span>Format: CTF{...}</span>
+  </div>
+  <div class="terminal-input-row">
+    <span class="terminal-caret">$&gt;</span>
+    <input class="terminal-input" type="text" id="flagInput" placeholder="CTF{...}" spellcheck="false" autocomplete="off" />
+    <button class="terminal-btn" onclick="submitFlag()">Submit</button>
+  </div>
+  <div class="terminal-output" id="termOutput"></div>
+</div>
+
+<!-- Hints area -->
+<div class="hints-area">
+  <div class="hint-panel" id="hintPanel1">
+    <div class="hint-title">
+      <span>Hint</span>
+      <span class="hint-badge">1 / 2</span>
+    </div>
+    <div class="hint-text">
+      Das Dokument erzählt eine Geschichte über Caesar und seine Vorlieben.<br><br>
+      Die Story ist kein Fülltext — sie enthält die Information,<br>
+      die du zum Dekodieren brauchst.<br><br>
+      Frage: Welche Zahl war Caesar besonders wichtig?<br>
+      Und was hat diese Zahl mit dem Cipher zu tun?
+    </div>
+  </div>
+
+  <div class="hint-panel hint-2" id="hintPanel2">
+    <div class="hint-title">
+      <span>Hint</span>
+      <span class="hint-badge">2 / 2</span>
+    </div>
+    <div class="hint-text">
+      Der Shift-Wert ist <code>7</code> — Caesars "heilige Zahl" laut der Geschichte.<br><br>
+      Beim Caesar-Cipher wird jeder Buchstabe um N Stellen im Alphabet<br>
+      <em>zurückgeschoben</em> (oder vorwärts, je nach Richtung).<br><br>
+      Beispiel: <code>J</code> − 7 = <code>C</code> &nbsp;·&nbsp; <code>a</code> − 7 = <code>t</code><br><br>
+      Dekodiere online unter <code>https://rot13.com</code> — wähle dort ROT7,<br>
+      oder nutze: <code>python3 -c "import codecs; ..."</code><br><br>
+      Das Ergebnis hat das Format <code>CTF{...}</code>.
+    </div>
+  </div>
+</div>
+
+<script>
+  // Encoded: JAM{jhlzhy_svclk_aol_7btilyZ}  (ROT+7)
+  // Decoded: CTF{caesar_loved_the_7umberS}   (ROT-7)
+  const FLAG = 'CTF{caesar_loved_the_7umberS}';
+
+  function submitFlag() {
+    const input = document.getElementById('flagInput').value.trim();
+    const out   = document.getElementById('termOutput');
+
+    if (!input) {
+      out.innerHTML = '<span class="t-info">// No input provided.</span>';
+      return;
+    }
+
+    if (input === FLAG) {
+      out.innerHTML =
+        '<span class="t-success">✓ ACCESS GRANTED — Token verified. Well done, ' +
+        'you just broke a Caesar cipher.</span><br>' +
+        '<span class="t-info">// Remember: ROT-N is not encryption. ' +
+        'Anyone who intercepts this document can decode it in seconds.</span>';
+    } else {
+      out.innerHTML =
+        '<span class="t-error">✗ INVALID TOKEN — Access denied. Keep trying.</span>';
+    }
+  }
+
+  // Show hints
+  const params = new URLSearchParams(window.location.search);
+  const hintLevel = params.get('hint');
+  if (hintLevel === '1') {
+    document.getElementById('hintPanel1').classList.add('visible');
+  } else if (hintLevel === '2') {
+    document.getElementById('hintPanel1').classList.add('visible');
+    document.getElementById('hintPanel2').classList.add('visible');
+  }
+
+  // Enter key
+  document.getElementById('flagInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitFlag();
+  });
+</script>
+
+</body>
+</html>
